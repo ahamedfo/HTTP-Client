@@ -8,6 +8,10 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+bool startsWith(const std::string& str, const std::string& prefix) {
+    return str.compare(0, prefix.size(), prefix) == 0;
+}
+
 int main(int argc, char **argv) {
   // Flush after every std::cout / std::cerr
   std::cout << std::unitbuf;
@@ -52,9 +56,17 @@ int main(int argc, char **argv) {
   std::cout << "Waiting for a client to connect...\n";
   
   int client = accept(server_fd, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
-  std::string message = "HTTP/1.1 200 OK\r\n\r\n";
-  send(client, message.c_str(), message.length(), 0);
   std::cout << "Client connected\n";
+  // std::cout << "argv is: " << argv[0] << " argc is: " << argc;
+  // the int response in recv tells me how many bytes were returned, -1 means error, 0 means connections closed
+  char inputBuffer[1024] = {0};
+  recv(client, inputBuffer, sizeof(inputBuffer), 0);
+  std::string path = "GET / HTTP/1.1";
+  std::string input = std::string(inputBuffer);
+  std::cout << (std::string(inputBuffer) == path) << " This is the buffer: " << inputBuffer << " This is the path: " << path;
+  std::string outputMessage = startsWith(std::string(inputBuffer), path) ? "HTTP/1.1 200 OK\r\n\r\n" : "HTTP/1.1 404 Not Found\r\n\r\n";
+
+  send(client, outputMessage.c_str(), outputMessage.length(), 0);
   close(server_fd);
 
   return 0;
