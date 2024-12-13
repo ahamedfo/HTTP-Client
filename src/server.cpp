@@ -7,10 +7,23 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <vector>
+#include <sstream>
 
 bool startsWith(const std::string& str, const std::string& prefix) {
     return str.compare(0, prefix.size(), prefix) == 0;
 }
+
+std::vector<std::string> split_message_by_line(const std::string& message){
+  std::vector<std::string> tokens;
+  std::stringstream ss(message);
+  std::string token;
+
+  while (std::getline(ss, token)){
+    tokens.push_back(token);
+  }
+  return tokens;
+} 
 
 int main(int argc, char **argv) {
   // Flush after every std::cout / std::cerr
@@ -63,8 +76,10 @@ int main(int argc, char **argv) {
   recv(client, (void *)&input_buffer[0],input_buffer.max_size(), 0);
   std::string input = std::string(input_buffer);
   std::string output_message = ""; 
+  std::vector<std::string> parts = split_message_by_line(input_buffer);
   bool is_home_page = startsWith(std::string(input_buffer), "GET / HTTP/1.1");
   bool is_echo_string = startsWith(std::string(input_buffer), "GET /echo");
+  bool is_user_agent = startsWith(std::string(input_buffer), "GET /user-agent");
   if(is_home_page) {
     output_message = "HTTP/1.1 200 OK\r\n\r\n";
   } else if(is_echo_string){
@@ -74,9 +89,13 @@ int main(int argc, char **argv) {
     std::string echo = full_str_no_cmd.substr(0, end_of_echo);
 
     output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(echo.length()) + "\r\n\r\n" + echo;
-    std::cout << echo;
-
-  } else {
+  } else if (is_user_agent){
+    //4th index is the reference i need
+    std::string user_agent_content = parts[2].substr(parts[2].find(':') + 2);
+    output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(user_agent_content.length() - 1) + "\r\n\r\n" + user_agent_content;
+    // std::cout << "This Is Part 2 " << parts[2];
+    std::cout << output_message;
+  }else {
     output_message = "HTTP/1.1 404 Not Found\r\n\r\n";
   }
 
