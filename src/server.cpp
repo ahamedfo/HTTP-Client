@@ -59,14 +59,28 @@ int main(int argc, char **argv) {
   std::cout << "Client connected\n";
   // std::cout << "argv is: " << argv[0] << " argc is: " << argc;
   // the int response in recv tells me how many bytes were returned, -1 means error, 0 means connections closed
-  char inputBuffer[1024] = {0};
-  recv(client, inputBuffer, sizeof(inputBuffer), 0);
-  std::string path = "GET / HTTP/1.1";
-  std::string input = std::string(inputBuffer);
-  std::cout << (std::string(inputBuffer) == path) << " This is the buffer: " << inputBuffer << " This is the path: " << path;
-  std::string outputMessage = startsWith(std::string(inputBuffer), path) ? "HTTP/1.1 200 OK\r\n\r\n" : "HTTP/1.1 404 Not Found\r\n\r\n";
+  std::string input_buffer(1024, '\0');
+  recv(client, (void *)&input_buffer[0],input_buffer.max_size(), 0);
+  std::string input = std::string(input_buffer);
+  std::string output_message = ""; 
+  bool is_home_page = startsWith(std::string(input_buffer), "GET / HTTP/1.1");
+  bool is_echo_string = startsWith(std::string(input_buffer), "GET /echo");
+  if(is_home_page) {
+    output_message = "HTTP/1.1 200 OK\r\n\r\n";
+  } else if(is_echo_string){
+    int echo_cmd_len = 10;
+    std::string full_str_no_cmd = input_buffer.substr(echo_cmd_len);
+    int end_of_echo = full_str_no_cmd.find(' ');
+    std::string echo = full_str_no_cmd.substr(0, end_of_echo);
 
-  send(client, outputMessage.c_str(), outputMessage.length(), 0);
+    output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(echo.length()) + "\r\n\r\n" + echo;
+    std::cout << echo;
+
+  } else {
+    output_message = "HTTP/1.1 404 Not Found\r\n\r\n";
+  }
+
+  send(client, output_message.c_str(), output_message.length(), 0);
   close(server_fd);
 
   return 0;
