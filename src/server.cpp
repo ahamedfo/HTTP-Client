@@ -10,6 +10,7 @@
 #include <vector>
 #include <sstream>
 #include <thread>
+#include <fstream>
   
   
 
@@ -29,7 +30,7 @@ std::vector<std::string> split_message_by_line(const std::string& message){
   return tokens;
 } 
 
-void new_client(int client){
+void new_client(int client, int argc, char** argv){
     std::string input_buffer(1024, '\0');
     recv(client, (void *)&input_buffer[0],input_buffer.max_size(), 0);
     std::string input = std::string(input_buffer);
@@ -38,6 +39,8 @@ void new_client(int client){
     bool is_home_page = startsWith(std::string(input_buffer), "GET / HTTP/1.1");
     bool is_echo_string = startsWith(std::string(input_buffer), "GET /echo");
     bool is_user_agent = startsWith(std::string(input_buffer), "GET /user-agent");
+    bool is_file_req = startsWith(std::string(input_buffer), "GET /files/");
+    std::cout << parts[1] << '\n';
 
     if(is_home_page) {
       output_message = "HTTP/1.1 200 OK\r\n\r\n";
@@ -52,7 +55,29 @@ void new_client(int client){
       std::string user_agent_content = parts[2].substr(parts[2].find(':') + 2);
       output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(user_agent_content.length() - 1) + "\r\n\r\n" + user_agent_content;
       std::cout << output_message;
-    }else {
+    } else if (is_file_req) {
+      std::string file_cmd = "GET /files/";
+      std::string file_access = parts[0].substr(file_cmd.length());
+      file_access = file_access.substr(0,file_access.find(' '));
+      std::string host_server = parts[1].substr(parts[1].find(':') + 2);
+      // std::cout << " files to access: " << file_access << " host server: " << host_server;
+      std::string return_url = argv[2] + file_access;
+
+      std::ifstream file(return_url, std::ios::binary | std::ios::ate); // Open file in binary mode and move to the end
+      if(file.is_open()){
+        std::streamsize size = file.tellg(); // Get the position of the file pointer (size of the file)
+        std::cout << size;
+        file.seekg(0, std::ios::beg);
+        std::string content(size, '\0');
+        if (file.read(&content[0], size)) {
+          output_message = "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length:" + std::to_string(size) + "\r\n\r\n" + content;
+        }
+        file.close();
+      } else {
+        output_message = "HTTP/1.1 404 Not Found\r\n\r\n";
+      }
+
+    } else {
       output_message = "HTTP/1.1 404 Not Found\r\n\r\n";
     }
     send(client, output_message.c_str(), output_message.length(), 0);
@@ -65,7 +90,6 @@ int main(int argc, char **argv) {
   
   // You can use print statements as follows for debugging, they'll be visible when running tests.
   std::cout << "Logs from your program will appear here!\n";
-  
   int server_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (server_fd < 0) {
    std::cerr << "Failed to create server socket\n";
@@ -103,7 +127,12 @@ int main(int argc, char **argv) {
     
     int client = accept(server_fd, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
     std::cout << "Client connected\n";
-    std::thread th(new_client, client);
+    if (argc > 2) {
+      if (argv[1] == "--directory") {
+        
+      }
+    }
+    std::thread th(new_client, client, argc, argv);
     th.detach();
     //add a copy of client from memroy into another datastructure so it's okayy if it is written over
   }
