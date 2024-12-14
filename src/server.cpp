@@ -40,6 +40,8 @@ void new_client(int client, int argc, char** argv){
     bool is_echo_string = startsWith(std::string(input_buffer), "GET /echo");
     bool is_user_agent = startsWith(std::string(input_buffer), "GET /user-agent");
     bool is_file_req = startsWith(std::string(input_buffer), "GET /files/");
+    bool is_file_upload = startsWith(std::string(input_buffer), "POST /files/");
+
     std::cout << parts[1] << '\n';
 
     if(is_home_page) {
@@ -55,8 +57,8 @@ void new_client(int client, int argc, char** argv){
       std::string user_agent_content = parts[2].substr(parts[2].find(':') + 2);
       output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(user_agent_content.length() - 1) + "\r\n\r\n" + user_agent_content;
       std::cout << output_message;
-    } else if (is_file_req) {
-      std::string file_cmd = "GET /files/";
+    } else if (is_file_req ) {
+      std::string file_cmd = is_file_req ? "GET /files/" : "POST /files/";
       std::string file_access = parts[0].substr(file_cmd.length());
       file_access = file_access.substr(0,file_access.find(' '));
       std::string host_server = parts[1].substr(parts[1].find(':') + 2);
