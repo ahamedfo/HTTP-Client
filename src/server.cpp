@@ -42,7 +42,9 @@ void new_client(int client, int argc, char** argv){
     bool is_file_req = startsWith(std::string(input_buffer), "GET /files/");
     bool is_file_upload = startsWith(std::string(input_buffer), "POST /files/");
 
-    std::cout << parts[1] << '\n';
+    for(size_t i = 0; i < ( sizeof(parts) / sizeof(parts[0])); i++) {
+      std::cout << parts[i] << '\n';
+    }
 
     if(is_home_page) {
       output_message = "HTTP/1.1 200 OK\r\n\r\n";
@@ -57,7 +59,7 @@ void new_client(int client, int argc, char** argv){
       std::string user_agent_content = parts[2].substr(parts[2].find(':') + 2);
       output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(user_agent_content.length() - 1) + "\r\n\r\n" + user_agent_content;
       std::cout << output_message;
-    } else if (is_file_req ) {
+    } else if (is_file_req ||is_file_upload) {
       std::string file_cmd = is_file_req ? "GET /files/" : "POST /files/";
       std::string file_access = parts[0].substr(file_cmd.length());
       file_access = file_access.substr(0,file_access.find(' '));
@@ -66,17 +68,21 @@ void new_client(int client, int argc, char** argv){
       std::string return_url = argv[2] + file_access;
 
       std::ifstream file(return_url, std::ios::binary | std::ios::ate); // Open file in binary mode and move to the end
-      if(file.is_open()){
-        std::streamsize size = file.tellg(); // Get the position of the file pointer (size of the file)
-        std::cout << size;
-        file.seekg(0, std::ios::beg);
-        std::string content(size, '\0');
-        if (file.read(&content[0], size)) {
-          output_message = "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length:" + std::to_string(size) + "\r\n\r\n" + content;
+      if (is_file_req){
+        if(file.is_open()) {
+          std::streamsize size = file.tellg(); // Get the position of the file pointer (size of the file)
+          std::cout << size;
+          file.seekg(0, std::ios::beg);
+          std::string content(size, '\0');
+          if (file.read(&content[0], size)) {
+            output_message = "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length:" + std::to_string(size) + "\r\n\r\n" + content;
+          }
+          file.close();
+        } else {
+          output_message = "HTTP/1.1 404 Not Found\r\n\r\n";
         }
-        file.close();
-      } else {
-        output_message = "HTTP/1.1 404 Not Found\r\n\r\n";
+      } else if (is_file_upload) {
+
       }
 
     } else {
