@@ -42,7 +42,7 @@ void new_client(int client, int argc, char** argv){
     bool is_file_req = startsWith(std::string(input_buffer), "GET /files/");
     bool is_file_upload = startsWith(std::string(input_buffer), "POST /files/");
 
-    std::cout << parts[0] << '\n';
+    std::cout << parts[1] << '\n';
 
     if(is_home_page) {
       output_message = "HTTP/1.1 200 OK\r\n\r\n";
