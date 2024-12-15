@@ -36,7 +36,7 @@ void new_client(int client, int argc, char** argv){
     char input_buffer[1024] = {0};
     int bytes_read = recv(client, input_buffer, sizeof(input_buffer) - 1, 0);
     std::string(input_buffer, bytes_read);
-    // std::cout << input_buffer;
+    std::cout << input_buffer;
     std::string output_message = ""; 
     std::vector<std::string> parts = split_message_by_line(input_buffer);
     bool is_home_page = startsWith(std::string(input_buffer), "GET / HTTP/1.1");
@@ -58,10 +58,6 @@ void new_client(int client, int argc, char** argv){
       if (parts.size() > 2 && startsWith(parts[2], "Accept-Encoding")){
         int encoding_idx = parts[2].find(':') + 2;
         std::string encoding_type = parts[2].substr(encoding_idx, 4);
-        
-        // std::cout << (encoding_type == "gzip");
-        std::cout << encoding_type.length();
-        std::cout << encoding_type;
 
         if (encoding_type == "gzip") {
           output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Encoding: gzip\r\n\r\n" ;
