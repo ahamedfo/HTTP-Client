@@ -57,10 +57,10 @@ void new_client(int client, int argc, char** argv){
       std::string echo = full_str_no_cmd.substr(0, end_of_echo);
       if (parts.size() > 2 && startsWith(parts[2], "Accept-Encoding")){
         int encoding_idx = parts[2].find(':') + 2;
-        std::string encoding_type = parts[2].substr(encoding_idx, 4);
-
-        if (encoding_type == "gzip") {
-          output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Encoding: gzip\r\n\r\n" ;
+        std::string encoding_type = parts[2].substr(encoding_idx);
+        printf("gotcha!");
+        if (encoding_type.find("gzip") != std::string::npos) {
+          output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Encoding: gzip\r\n\r\n";
         } else {
           output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n" ;
         }
