@@ -52,7 +52,7 @@ void new_client(int client, int argc, char** argv){
       output_message = "HTTP/1.1 200 OK\r\n\r\n";
     } else if(is_echo_string){
       int echo_cmd_len = 10;
-      std::string full_str_no_cmd = std::string(input_buffer)codecr.substr(echo_cmd_len);
+      std::string full_str_no_cmd = std::string(input_buffer).substr(echo_cmd_len);
       int end_of_echo = full_str_no_cmd.find(' ');
       std::string echo = full_str_no_cmd.substr(0, end_of_echo);
 
