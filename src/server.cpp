@@ -36,11 +36,11 @@ void new_client(int client, int argc, char** argv){
     char input_buffer[1024] = {0};
     int bytes_read = recv(client, input_buffer, sizeof(input_buffer) - 1, 0);
     std::string(input_buffer, bytes_read);
-    std::cout << input_buffer;
+    // std::cout << input_buffer;
     std::string output_message = ""; 
     std::vector<std::string> parts = split_message_by_line(input_buffer);
     bool is_home_page = startsWith(std::string(input_buffer), "GET / HTTP/1.1");
-    bool is_echo_string = startsWith(std::string(input_buffer), "GET /echo");
+    bool is_echo_string = startsWith(std::string(input_buffer), "GET /echo/");
     bool is_user_agent = startsWith(std::string(input_buffer), "GET /user-agent");
     bool is_file_req = startsWith(std::string(input_buffer), "GET /files/");
     bool is_file_upload = startsWith(std::string(input_buffer), "POST /files/");
@@ -55,8 +55,22 @@ void new_client(int client, int argc, char** argv){
       std::string full_str_no_cmd = std::string(input_buffer).substr(echo_cmd_len);
       int end_of_echo = full_str_no_cmd.find(' ');
       std::string echo = full_str_no_cmd.substr(0, end_of_echo);
+      if (parts.size() > 2 && startsWith(parts[2], "Accept-Encoding")){
+        int encoding_idx = parts[2].find(':') + 2;
+        std::string encoding_type = parts[2].substr(encoding_idx, 4);
+        
+        // std::cout << (encoding_type == "gzip");
+        std::cout << encoding_type.length();
+        std::cout << encoding_type;
 
-      output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(echo.length()) + "\r\n\r\n" + echo;
+        if (encoding_type == "gzip") {
+          output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Encoding: gzip\r\n\r\n" ;
+        } else {
+          output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n" ;
+        }
+      } else {
+        output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(echo.length()) + "\r\n\r\n" + echo;
+      }
     } else if (is_user_agent){
       std::string user_agent_content = parts[2].substr(parts[2].find(':') + 2);
       output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(user_agent_content.length() - 1) + "\r\n\r\n" + user_agent_content;
@@ -78,7 +92,6 @@ void new_client(int client, int argc, char** argv){
 
         if(file.is_open()) {
           std::streamsize size = file.tellg(); // Get the position of the file pointer (size of the file)
-          std::cout << size;
           file.seekg(0, std::ios::beg);
           std::string content(size, '\0');
           if (file.read(&content[0], size)) {
