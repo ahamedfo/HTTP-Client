@@ -11,9 +11,44 @@
 #include <sstream>
 #include <thread>
 #include <fstream>
-  
-  
+#include <zlib.h>  
+#include <stdexcept>
 
+  
+  
+std::string gzip_compress(const std::string &data) {
+  z_stream zs;
+  memset(&zs, 0, sizeof(zs));
+  if (deflateInit2(&zs, Z_BEST_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY) != Z_OK) { 
+      throw std::runtime_error("deflateInit2 failed while compressing.");
+  }
+  zs.next_in = (Bytef *)data.data();
+  zs.avail_in = data.size();
+
+  int ret;
+  char outbuffer[32768]; 
+  std::string outstring;  
+
+  do {
+      zs.next_out = reinterpret_cast<Bytef *>(outbuffer); // Set output buffer
+      zs.avail_out = sizeof(outbuffer);                  // Set available space
+
+      ret = deflate(&zs, Z_FINISH);  // Compress the data
+
+      if (outstring.size() < zs.total_out) {
+          // Append newly compressed data to the output string
+          outstring.append(outbuffer, zs.total_out - outstring.size());
+      }
+  } while (ret == Z_OK);
+
+  deflateEnd(&zs);  // Free zlib's internal memory
+
+  if (ret != Z_STREAM_END) {
+      throw std::runtime_error("Exception during zlib compression: (" + std::to_string(ret) + ") " + zs.msg);
+  }
+
+  return outstring;
+  }
 
 bool startsWith(const std::string& str, const std::string& prefix) {
     return str.compare(0, prefix.size(), prefix) == 0;
@@ -60,7 +95,8 @@ void new_client(int client, int argc, char** argv){
         std::string encoding_type = parts[2].substr(encoding_idx);
         printf("gotcha!");
         if (encoding_type.find("gzip") != std::string::npos) {
-          output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Encoding: gzip\r\n\r\n";
+          std::string compressed_body = gzip_compress(echo);
+          output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Encoding: gzip\r\n" "Content-Length: " + std::to_string(compressed_body.size()) + "\r\n\r\n" + compressed_body;
         } else {
           output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n" ;
         }
