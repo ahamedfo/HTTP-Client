@@ -27,13 +27,16 @@ std::vector<std::string> split_message_by_line(const std::string& message){
   while (std::getline(ss, token)){
     tokens.push_back(token);
   }
+
+
   return tokens;
 } 
 
 void new_client(int client, int argc, char** argv){
-    std::string input_buffer(1024, '\0');
-    recv(client, (void *)&input_buffer[0],input_buffer.max_size(), 0);
-    std::string input = std::string(input_buffer);
+    char input_buffer[1024] = {0};
+    int bytes_read = recv(client, input_buffer, sizeof(input_buffer) - 1, 0);
+    std::string(input_buffer, bytes_read);
+    std::cout << input_buffer;
     std::string output_message = ""; 
     std::vector<std::string> parts = split_message_by_line(input_buffer);
     bool is_home_page = startsWith(std::string(input_buffer), "GET / HTTP/1.1");
@@ -42,15 +45,14 @@ void new_client(int client, int argc, char** argv){
     bool is_file_req = startsWith(std::string(input_buffer), "GET /files/");
     bool is_file_upload = startsWith(std::string(input_buffer), "POST /files/");
 
-    for(size_t i = 0; i < ( sizeof(parts) / sizeof(parts[0])); i++) {
-      std::cout << parts[i] << '\n';
-    }
+    //std::cout << input_buffer;
+
 
     if(is_home_page) {
       output_message = "HTTP/1.1 200 OK\r\n\r\n";
     } else if(is_echo_string){
       int echo_cmd_len = 10;
-      std::string full_str_no_cmd = input_buffer.substr(echo_cmd_len);
+      std::string full_str_no_cmd = std::string(input_buffer)codecr.substr(echo_cmd_len);
       int end_of_echo = full_str_no_cmd.find(' ');
       std::string echo = full_str_no_cmd.substr(0, end_of_echo);
 
@@ -58,17 +60,22 @@ void new_client(int client, int argc, char** argv){
     } else if (is_user_agent){
       std::string user_agent_content = parts[2].substr(parts[2].find(':') + 2);
       output_message = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + std::to_string(user_agent_content.length() - 1) + "\r\n\r\n" + user_agent_content;
-      std::cout << output_message;
-    } else if (is_file_req ||is_file_upload) {
+    } else if (is_file_req || is_file_upload) {
       std::string file_cmd = is_file_req ? "GET /files/" : "POST /files/";
       std::string file_access = parts[0].substr(file_cmd.length());
       file_access = file_access.substr(0,file_access.find(' '));
-      std::string host_server = parts[1].substr(parts[1].find(':') + 2);
-      // std::cout << " files to access: " << file_access << " host server: " << host_server;
       std::string return_url = argv[2] + file_access;
 
-      std::ifstream file(return_url, std::ios::binary | std::ios::ate); // Open file in binary mode and move to the end
+
+      //std::cout << "This is Part 4 : " << parts[4] << ' ';
+      //std::cout << "This is the whole buffer : " << input_buffer;
+
+      
       if (is_file_req){
+
+        std::string host_server = parts[1].substr(parts[1].find(':') + 2);
+        std::ifstream file(return_url, std::ios::binary | std::ios::ate); // Open file in binary mode and move to the end
+
         if(file.is_open()) {
           std::streamsize size = file.tellg(); // Get the position of the file pointer (size of the file)
           std::cout << size;
@@ -82,7 +89,9 @@ void new_client(int client, int argc, char** argv){
           output_message = "HTTP/1.1 404 Not Found\r\n\r\n";
         }
       } else if (is_file_upload) {
-
+        std::ofstream outfile(return_url);
+        outfile << std::string(parts[5]);
+        output_message = "HTTP/1.1 201 Created\r\n\r\n";
       }
 
     } else {
